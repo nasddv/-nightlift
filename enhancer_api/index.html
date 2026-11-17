@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Enhancer</title>
+<style>
+  :root {
+    --bg: #f4f6fb; --card: #ffffff; --ink: #1b2130; --mute: #6b7487; --line: #e2e6ef;
+    --acc: #3b6cf6; --acc-ink: #ffffff; --acc-soft: #eaf0ff; --ok: #1f9d55; --err: #d64545;
+    --radius: 14px; --shadow: 0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #11141a; --card: #1a1e27; --ink: #e9ecf2; --mute: #98a1b3; --line: #2b313d;
+            --acc: #6d93ff; --acc-soft: #222c44; --shadow: none; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 20px 48px; }
+
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .logo { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+          background: linear-gradient(135deg, #1b2a55, var(--acc)); color: #fff; font-size: 20px; }
+  header h1 { font-size: 21px; margin: 0; }
+  header p { margin: 0; color: var(--mute); font-size: 13.5px; }
+
+  .layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+  /* settings panel */
+  .panel { padding: 18px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 16px; }
+  .label { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--mute); margin-bottom: 8px; }
+  .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 20px 14px; text-align: center; cursor: pointer;
+          transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--acc); background: var(--acc-soft); }
+  .drop .big { font-weight: 600; } .drop .small { font-size: 12.5px; color: var(--mute); }
+  .drop .icon { font-size: 26px; line-height: 1; margin-bottom: 6px; }
+  .file-name { font-size: 12.5px; color: var(--mute); margin-top: 8px; word-break: break-all; min-height: 18px; }
+
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line);
+         border-radius: 10px; cursor: pointer; transition: border-color .15s, background .15s; }
+  .opt:hover { border-color: var(--acc); }
+  .opt input { margin-top: 3px; accent-color: var(--acc); }
+  .opt:has(input:checked) { border-color: var(--acc); background: var(--acc-soft); }
+  .opt b { display: block; font-size: 14px; } .opt span { font-size: 12.5px; color: var(--mute); }
+
+  select { width: 100%; font: inherit; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line);
+           background: var(--card); color: var(--ink); }
+
+  .btn { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 11px 16px; cursor: pointer;
+         background: var(--acc); color: var(--acc-ink); width: 100%; transition: filter .15s, opacity .15s; }
+  .btn:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.ghost { background: transparent; color: var(--acc); border: 1px solid var(--acc); }
+
+  .progress { height: 6px; border-radius: 6px; background: var(--line); overflow: hidden; display: none; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--acc); transition: width .2s; }
+  .status { font-size: 13px; color: var(--mute); min-height: 20px; }
+  .status.ok { color: var(--ok); } .status.err { color: var(--err); }
+
+  /* result area */
+  .stage { padding: 14px; }
+  .tabs { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 3px; margin-bottom: 12px; }
+  .tabs button { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--mute);
+                 padding: 6px 14px; border-radius: 7px; cursor: pointer; }
+  .tabs button.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .tabs button:disabled { opacity: .4; cursor: not-allowed; }
+
+  .empty { aspect-ratio: 3 / 2; border-radius: 12px; border: 1px dashed var(--line); display: grid; place-items: center;
+           color: var(--mute); text-align: center; padding: 20px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .pair { grid-template-columns: 1fr; } }
+  .pane { position: relative; }
+  .pane img, .pane canvas { display: block; width: 100%; height: auto; border-radius: 10px; background: #000; }
+  .tag { position: absolute; top: 8px; left: 8px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+         background: rgba(0,0,0,.55); color: #fff; }
+  .placeholder { aspect-ratio: 3 / 2; border-radius: 10px; background: var(--bg); border: 1px dashed var(--line);
+                 display: grid; place-items: center; color: var(--mute); font-size: 13px; }
+
+  /* before/after slider */
+  .compare { position: relative; border-radius: 10px; overflow: hidden; user-select: none; touch-action: none; cursor: ew-resize; }
+  .compare img, .compare canvas { display: block; width: 100%; height: auto; }
+  .compare .top { position: absolute; inset: 0; clip-path: inset(0 50% 0 0); }
+  .compare .top img { width: 100%; height: 100%; object-fit: fill; }
+  .compare .line { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #fff; box-shadow: 0 0 6px rgba(0,0,0,.5); }
+  .compare .knob { position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%;
+                   background: #fff; color: #333; display: grid; place-items: center; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+  .compare .tag.r { left: auto; right: 8px; }
+
+  .meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 10px; font-size: 12.5px; color: var(--mute); }
+  footer { margin-top: 26px; font-size: 12px; color: var(--mute); text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">✦</div>
+    <div>
+      <h1>Image Enhancer</h1>
+      <p>Brighten dark photos and fix uneven exposure. Runs offline in your browser, and your image never leaves your device.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- settings -->
+    <aside class="card panel">
+      <div>
+        <div class="label">1 · Image</div>
+        <div class="drop" id="drop">
+          <input type="file" id="file" accept="image/*" hidden>
+          <div class="icon">🖼️</div>
+          <div class="big">Click to choose a photo</div>
+          <div class="small">or drag &amp; drop · JPG, PNG, WebP</div>
+        </div>
+        <div class="file-name" id="fileName"></div>
+      </div>
+
+      <div>
+        <div class="label">2 · Model</div>
+        <div class="options">
+          <label class="opt"><input type="radio" name="model" value="lol" checked>
+            <div><b>Low-light</b><span>Dark or night photos</span></div></label>
+          <label class="opt"><input type="radio" name="model" value="sice">
+            <div><b>Mixed exposure</b><span>Parts too dark and parts too bright</span></div></label>
+        </div>
+      </div>
+
+      <div>
+        <div class="label">3 · Quality</div>
+        <select id="size">
+          <option value="384">Fast (384 px)</option>
+          <option value="512" selected>Balanced (512 px)</option>
+          <option value="768">High (768 px)</option>
+          <option value="0">Original size (slowest)</option>
+        </select>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn" id="enhance" disabled>Enhance image</button>
+        <div class="progress" id="progress"><i id="bar"></i></div>
+        <div class="status" id="status">Choose a photo to begin.</div>
+        <button class="btn ghost" id="download" disabled>Download result</button>
+      </div>
+    </aside>
+
+    <!-- results -->
+    <main class="card stage">
+      <div class="tabs">
+        <button id="tabSide" class="on">Side by side</button>
+        <button id="tabSlide" disabled>Compare slider</button>
+      </div>
+      <div id="view">
+        <div class="empty">Your input and the enhanced result will appear here.</div>
+      </div>
+      <div class="meta" id="meta"></div>
+    </main>
+  </div>
+
+  <footer>FreqSSM-Lite · U-Net with frequency-domain and selective-scan (Mamba-style) blocks · ~280K parameters</footer>
+</div>
+
+<!-- model weights + model library -->
+<script src="models/lol.js"></script>
+<script src="models/sice.js"></script>
+<script src="freqssm.js"></script>
+
+<!-- page logic: only calls FreqSSM.enhance() -->
+<script>
+  const $ = (id) => document.getElementById(id);
+  let inputURL = null, inputFile = null, result = null, usedModel = "lol", mode = "side", busy = false;
+
+  function setStatus(text, kind) { $("status").textContent = text; $("status").className = "status" + (kind ? " " + kind : ""); }
+  function setProgress(p) { $("progress").style.display = p == null ? "none" : "block"; $("bar").style.width = Math.round((p || 0) * 100) + "%"; }
+  const model = () => document.querySelector('input[name="model"]:checked').value;
+
+  // ---- choosing an image ----
+  function choose(file) {
+    if (!file || !file.type.startsWith("image/")) { setStatus("That file is not an image.", "err"); return; }
+    if (inputURL) URL.revokeObjectURL(inputURL);
+    inputFile = file; inputURL = URL.createObjectURL(file); result = null;
+    $("fileName").textContent = file.name + " · " + (file.size / 1024 / 1024).toFixed(2) + " MB";
+    $("enhance").disabled = false; $("download").disabled = true; $("tabSlide").disabled = true;
+    mode = "side"; render(); setStatus("Ready: press Enhance image.");
+  }
+  $("drop").onclick = () => $("file").click();
+  $("file").onchange = (e) => choose(e.target.files[0]);
+  ["dragenter", "dragover"].forEach((t) => $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.add("over"); }));
+  ["dragleave", "drop"].forEach((t) => $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.remove("over"); }));
+  $("drop").addEventListener("drop", (e) => choose(e.dataTransfer.files[0]));
+  document.querySelectorAll('input[name="model"]').forEach((r) => r.onchange = () => { if (result) setStatus("Model changed: press Enhance image again."); });
+  $("size").onchange = () => { if (result) setStatus("Quality changed: press Enhance image again."); };
+
+  // ---- enhancing ----
+  $("enhance").onclick = async () => {
+    if (!inputFile || busy) return;
+    busy = true; $("enhance").disabled = true; setProgress(0); setStatus("Enhancing…");
+    try {
+      usedModel = model();
+      result = await FreqSSM.enhance(inputFile, {
+        model: usedModel,
+        maxSide: +$("size").value,
+        onProgress: (p) => { setProgress(p); setStatus("Enhancing… " + Math.round(p * 100) + "%"); },
+      });
+      $("download").disabled = false; $("tabSlide").disabled = false;
+      setStatus("Done in " + (result.ms / 1000).toFixed(1) + " s", "ok");
+      render();
+    } catch (err) {
+      setStatus("Could not enhance this image: " + err.message, "err");
+    } finally { busy = false; $("enhance").disabled = !inputFile; setProgress(null); }
+  };
+
+  // ---- downloading ----
+  $("download").onclick = async () => {
+    if (!result) return;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(await result.toBlob());
+    a.download = (inputFile.name.replace(/\.[^.]+$/, "") || "image") + "_enhanced.png";
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+
+  // ---- views ----
+  $("tabSide").onclick = () => { mode = "side"; render(); };
+  $("tabSlide").onclick = () => { if (result) { mode = "slide"; render(); } };
+
+  function render() {
+    $("tabSide").classList.toggle("on", mode === "side");
+    $("tabSlide").classList.toggle("on", mode === "slide");
+    const view = $("view"); view.innerHTML = "";
+    if (!inputURL) { view.innerHTML = '<div class="empty">Your input and the enhanced result will appear here.</div>'; $("meta").textContent = ""; return; }
+
+    if (mode === "slide" && result) {
+      const box = document.createElement("div"); box.className = "compare";
+      box.style.width = "min(100%, calc(68vh * " + (result.width / result.height).toFixed(4) + "))"; box.style.margin = "0 auto";
+      const out = result.canvas; out.style.width = "100%";
+      const top = document.createElement("div"); top.className = "top";
+      const img = new Image(); img.src = inputURL; top.appendChild(img);
+      box.append(out, top);
+      box.insertAdjacentHTML("beforeend", '<div class="line"></div><div class="knob">⇆</div><span class="tag">Input</span><span class="tag r">Enhanced</span>');
+      const move = (x) => {
+        const r = box.getBoundingClientRect(), p = Math.min(100, Math.max(0, ((x - r.left) / r.width) * 100));
+        top.style.clipPath = "inset(0 " + (100 - p) + "% 0 0)";
+        box.querySelector(".line").style.left = p + "%"; box.querySelector(".knob").style.left = p + "%";
+      };
+      let drag = false;
+      box.addEventListener("pointerdown", (e) => { drag = true; box.setPointerCapture(e.pointerId); move(e.clientX); });
+      box.addEventListener("pointermove", (e) => drag && move(e.clientX));
+      box.addEventListener("pointerup", () => (drag = false));
+      view.appendChild(box);
+    } else {
+      const pair = document.createElement("div"); pair.className = "pair";
+      const left = document.createElement("div"); left.className = "pane";
+      const img = new Image(); img.src = inputURL; left.append(img); left.insertAdjacentHTML("beforeend", '<span class="tag">Input</span>');
+      const right = document.createElement("div"); right.className = "pane";
+      if (result) { right.append(result.canvas); right.insertAdjacentHTML("beforeend", '<span class="tag">Enhanced</span>'); }
+      else right.innerHTML = '<div class="placeholder">Enhanced image will appear here</div>';
+      pair.append(left, right); view.appendChild(pair);
+    }
+    $("meta").innerHTML = result
+      ? "<span>Model: " + (usedModel === "lol" ? "Low-light" : "Mixed exposure") + "</span><span>Output: " + result.width + " × " + result.height + " px</span>"
+      : "<span>" + inputFile.name + "</span>";
+  }
+</script>
+</body>
+</html>

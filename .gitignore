@@ -1,0 +1,17 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.bak
+.DS_Store
+
+runs/
+*.npy
+*.npz
+*.pt
+*.pth
+*.ckpt
+
+.env
+.env.*
+!.env.example
