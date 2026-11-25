@@ -36,23 +36,3 @@ python test.py  --ckpt runs/lolv2syn_c16/best.npz --data_root ../expomamba-llie/
   `test_results.json`, `test_metrics.csv` (per image), `test_images/`.
 
 Useful knobs: `--iters` (default 4000), `--patch 64`, `--batch 8`, `--channels 16`, `--lr 1e-3`.
-
-## Development Progress
-
-### Day 1 — Project Initialization and Baseline Integration
-
-Completed:
-- Organized the FreqSSM-Lite project structure.
-- Integrated model, training, and testing scripts.
-- Added JavaScript inference implementation.
-- Added gradient-checking tests.
-- Made SICE dataset paths portable.
-- Added dependency and Git ignore configuration.
-- Documented project setup and execution instructions.
-
-Validation:
-- Gradient checks passed.
-- Python source compilation passed.
-- SICE train/test paths verified.
-
-Baseline commit: `8acd940`
