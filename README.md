@@ -1,4 +1,4 @@
-# FreqSSM-Lite — a runnable, CPU-only low-light enhancer in the spirit of ExpoMamba
+# FreqSSM — a runnable, CPU-only low-light enhancer in the spirit of ExpoMamba
 
 A small reimplementation of the ExpoMamba ideas (U-Net + frequency-domain block + selective
 state-space scan) that **needs only NumPy and Pillow**: no PyTorch, no CUDA, no `mamba_ssm`.
